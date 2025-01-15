@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plant Leaf Disease Dataset</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 600px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+
+        p {
+            font-size: 18px;
+            color: #333;
+        }
+
+        .file-number {
+            font-weight: bold;
+            font-size: 20px;
+            color: #2a9d8f;
+        }
+
+        form {
+            margin-bottom: 20px;
+        }
+
+        input[type="file"] {
+            margin-bottom: 10px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            width: 80%;
+        }
+
+        button {
+            background-color: #2a9d8f;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #21867a;
+        }
+
+        #next-button {
+            background-color: #e9c46a;
+            margin-top: 20px;
+        }
+
+        #next-button:hover {
+            background-color: #f4a261;
+        }
+
+        .camera-preview {
+            margin-top: 20px;
+            display: none;
+            border: 2px solid #ddd;
+            padding: 10px;
+            border-radius: 8px;
+            background-color: #fafafa;
+        }
+
+        .camera-preview img {
+            width: 100%;
+            max-height: 300px;
+            object-fit: contain;
+            border-radius: 8px;
+        }
+
+        /* Webcam Section */
+        .webcam-container {
+            margin-top: 20px;
+            border: 2px solid #ddd;
+            padding: 10px;
+            border-radius: 8px;
+            background-color: #fafafa;
+        }
+
+        #webcam {
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .webcam-controls {
+            margin-top: 10px;
+        }
+
+        .webcam-controls button {
+            margin: 0 5px;
+        }
+
+        .image-gallery {
+            margin-top: 20px;
+        }
+
+        .image-gallery img {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            margin: 5px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Capture Plant Leaf Images</h1>
+        <p>Current File Number: <span id="file-number" class="file-number">{{ current_file_number }}</span></p>
+
+        <form id="image-form" action="/save-image" method="POST" enctype="multipart/form-data">
+            <input type="file" name="image" required id="image-input">
+            <button type="submit" id="capture-button">Capture and Save Image</button>
+        </form>
+
+        <button id="button1">Capture Image</button>
+        <button id="button2">Button 2</button>
+        <button id="button3">Button 3</button>
+
+        <!-- Camera Capture Section -->
+        <div class="webcam-container" id="webcam-container">
+            <h3>Webcam Capture</h3>
+            <video id="webcam" autoplay></video>
+            <div class="webcam-controls">
+                <button id="capture-webcam-button">Capture Webcam Image</button>
+                <button id="next-button">Next</button>
+            </div>
+            <div class="camera-preview" id="camera-preview">
+                <h3>Image Preview:</h3>
+                <img id="image-preview" src="" alt="Preview will appear here" />
+            </div>
+        </div>
+
+        <!-- Image Gallery Section -->
+        <div class="image-gallery" id="image-gallery">
+            <h3>Saved Images:</h3>
+        </div>
+    </div>
+
+    <script>
+        // Webcam functionality
+        let webcamStream;
+        const webcamElement = document.getElementById('webcam');
+        const captureButton = document.getElementById('capture-webcam-button');
+        const cameraPreview = document.getElementById('camera-preview');
+        const imagePreview = document.getElementById('image-preview');
+        const button1 = document.getElementById('button1');
+        const button2 = document.getElementById('button2');
+        const button3 = document.getElementById('button3');
+        const imageGallery = document.getElementById('image-gallery');
+
+        // Start webcam stream
+        async function startWebcam() {
+            try {
+                webcamStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                webcamElement.srcObject = webcamStream;
+            } catch (error) {
+                console.error("Error accessing webcam: ", error);
+                alert("Could not access webcam.");
+            }
+        }
+
+        // Capture image from webcam and store in database
+        button1.addEventListener('click', function() {
+            const canvas = document.createElement('canvas');
+            canvas.width = webcamElement.videoWidth;
+            canvas.height = webcamElement.videoHeight;
+            const context = canvas.getContext('2d');
+            context.drawImage(webcamElement, 0, 0, canvas.width, canvas.height);
+            canvas.toBlob(blob => {
+                const formData = new FormData();
+                formData.append('image', blob, 'webcam.png');
+
+                // Send image data to server to store in database
+                fetch('/save-image', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Image saved successfully:', data);
+                    alert('Image saved successfully');
+                    loadImages();
+                })
+                .catch(error => {
+                    console.error('Error saving image:', error);
+                    alert('Error saving image');
+                });
+            }, 'image/png');
+        });
+
+        // Placeholder for button2 functionality
+        button2.addEventListener('click', function() {
+            alert('Button 2 functionality to be implemented');
+        });
+
+        // Placeholder for button3 functionality
+        button3.addEventListener('click', function() {
+            alert('Button 3 functionality to be implemented');
+        });
+
+        // Load images from the server and display them
+        async function loadImages() {
+            try {
+                const response = await fetch('/images');
+                const images = await response.json();
+                imageGallery.innerHTML = '';
+                images.forEach(image => {
+                    const imgElement = document.createElement('img');
+                    imgElement.src = image.filePath;
+                    imageGallery.appendChild(imgElement);
+                });
+            } catch (error) {
+                console.error('Error loading images:', error);
+            }
+        }
+
+        // Start the webcam when the page loads
+        window.addEventListener('load', () => {
+            startWebcam();
+            loadImages();
+        });
+    </script>
+</body>
+</html>
